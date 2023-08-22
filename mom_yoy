@@ -1,0 +1,244 @@
+import seaborn as sns
+import pandas as pd
+import matplotlib.pyplot as plt
+import locale
+
+class ClosedHeat:
+    def __init__(self, file_path, sheet_name, header=2):
+        self.df = pd.read_excel(file_path, sheet_name, header=header)
+        self.df['Closed Date'] = pd.to_datetime(self.df['Closed Date'], format="%Y-%m-%d",
+                                                errors='coerce').fillna('1900-01-01')
+        self.df['Rate Locked Date'] = pd.to_datetime(self.df['Rate Locked Date'], format="%Y-%m-%d",
+                                                     errors='coerce').fillna('1900-01-01')
+
+    def monthly_volume_bar(self, year):
+        monthly_volumes = []
+        for month in range(1, 13):
+            df_filtered = self.df[
+                (self.df['Closed Date'].dt.year == year) & (
+                        self.df['Closed Date'].dt.month == month) & (self.df['Is Rate Locked'] == 'Yes')
+                & (~self.df['Loan Status'].isin(['Loan Withdrawn', 'Loan Denied', 'Loan Canceled']))]
+            loan_amount = df_filtered['Total Loan Amount'].sum()
+            monthly_volumes.append(loan_amount)
+        print(monthly_volumes)
+
+        mom_pct = []
+        for i in range(1, len(monthly_volumes)):
+            prev_month_volume = monthly_volumes[i - 1]
+            curr_month_volume = monthly_volumes[i]
+
+            if prev_month_volume != 0:
+                pct_change = ((curr_month_volume - prev_month_volume) / prev_month_volume) * 100
+
+            else:
+                pct_change = 0.0
+            mom_pct.append(pct_change)
+
+        print(mom_pct)
+        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq='M').strftime("%b")
+        return monthly_volumes, months
+
+    def create_heatmap(self):
+
+        # Create a DataFrame for the heatmap
+        data = pd.DataFrame({'2020': monthly_volumes_2020, '2021': monthly_volumes_2021, '2022': monthly_volumes_2022,
+                             '2023': monthly_volumes_2023},
+                            index=months_2020)
+        print(data)
+
+        # Calculate Jan
+        data_mom = data.pct_change().fillna(0)
+        for year in range(2021, 2024):
+            data_mom.loc['Jan', str(year)] = (data.loc['Jan', str(year)] - data.loc['Dec', str(year - 1)]
+                                                ) / data.loc['Dec', str(year - 1)]
+
+        print(data_mom)
+        # Replace zero values with a small value (1) to avoid division by zero
+        data_no_zeros = data.replace(0, 1)
+
+        # Calculate YoY 
+        data_yoy = ((data - data.shift(periods=1, axis=1)) / data.shift(periods=1, axis=1) * 100) /100
+        data_yoy = data_yoy.fillna(0)
+        print(data_yoy)
+
+        # Create heatmap
+        plt.figure(figsize=(10, 6))
+        sns.set(font_scale=1)
+        sns.heatmap(data_mom, annot=True, fmt=".1%", cmap='RdBu_r', cbar=False, vmin=-1, vmax=1)
+        plt.title('Month-over-Month % Change in Closed Loan Volume')
+        plt.show()
+
+        plt.figure(figsize=(10, 6))
+        sns.set(font_scale=1)
+        sns.heatmap(data_yoy, annot=True, fmt=".1%", cmap='RdBu_r', cbar=False, vmin=-1, vmax=1)
+        plt.title('Year-over-Year % Change in Closed Loan Volume')
+        plt.show()
+
+
+# Call
+analyzer = ClosedHeat('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+monthly_volumes_2020, months_2020 = analyzer.monthly_volume_bar(2020)
+monthly_volumes_2021, months_2021 = analyzer.monthly_volume_bar(2021)
+monthly_volumes_2022, months_2022 = analyzer.monthly_volume_bar(2022)
+monthly_volumes_2023, months_2023 = analyzer.monthly_volume_bar(2023)
+
+analyzer.create_heatmap()
+
+# Locked MoM + YoY Heat
+
+class LockedHeatMoM:
+    def __init__(self, file_path, sheet_name, header=2):
+        self.df = pd.read_excel(file_path, sheet_name, header=header)
+        self.df['Rate Locked Date'] = pd.to_datetime(self.df['Rate Locked Date'], format="%Y-%m-%d",
+                                                     errors='coerce').fillna('1900-01-01')
+
+    def locked_mom(self, year):
+        monthly_volumes = []
+        for month in range(1, 13):
+            df_filtered = self.df[
+                (self.df['Rate Locked Date'].dt.year == year) & (
+                        self.df['Rate Locked Date'].dt.month == month)]
+            loan_sum = df_filtered['Total Loan Amount'].sum()
+            monthly_volumes.append(loan_sum)
+        print(monthly_volumes)
+
+        locked_mom_pct = []
+        for i in range(1, len(monthly_volumes)):
+            prev_month_volume = monthly_volumes[i - 1]
+            curr_month_volume = monthly_volumes[i]
+
+            if prev_month_volume != 0:
+                pct_change = ((curr_month_volume - prev_month_volume) / prev_month_volume) * 100
+
+            else:
+                pct_change = 0.0
+            locked_mom_pct.append(pct_change)
+
+        print(locked_mom_pct)
+        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq='M').strftime("%b")
+        return monthly_volumes, months
+
+    def create_heatmap(self):
+
+        # Create a DataFrame for the heatmap
+        data_locked = pd.DataFrame({'2020': monthly_volumes_2020, '2021': monthly_volumes_2021, '2022': monthly_volumes_2022,
+                             '2023': monthly_volumes_2023},
+                            index=months_2020)
+        print(data_locked)
+
+        # Calculate MoM
+        data_mom = data_locked.pct_change().fillna(0)
+        for year in range(2021, 2024):
+            data_mom.loc['Jan', str(year)] = (data_locked.loc['Jan', str(year)] - data_locked.loc['Dec', str(year - 1)]
+                                                ) / data_locked.loc['Dec', str(year - 1)]
+
+        print(data_mom)
+        # Replace zero values with a small value (1) to avoid division by zero
+        data_no_zeros = data_locked.replace(0, 1)
+
+        # Calculate YoY percentage changes for each month
+        data_yoy = ((data_locked - data_locked.shift(periods=1, axis=1)) / data_locked.shift(periods=1, axis=1) * 100) /100
+        data_yoy = data_yoy.fillna(0)
+        print(data_yoy)
+
+        # Create the heatmap using Seaborn
+        plt.figure(figsize=(10, 6))
+        sns.set(font_scale=1)
+        sns.heatmap(data_mom, annot=True, fmt=".1%", cmap='RdBu_r', cbar=False, vmin=-1, vmax=1)
+        plt.title('Month-over-Month % Change in Locked Loan Volume')
+        plt.show()
+
+        plt.figure(figsize=(10, 6))
+        sns.set(font_scale=1)
+        sns.heatmap(data_yoy, annot=True, fmt=".1%", cmap='RdBu_r', cbar=False, vmin=-1, vmax=1)
+        plt.title('Year-over-Year % Change in Locked Loan Volume')
+        plt.show()
+
+# Call
+analyzer = LockedHeatMoM('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+monthly_volumes_2020, months_2020 = analyzer.locked_mom(2020)
+monthly_volumes_2021, months_2021 = analyzer.locked_mom(2021)
+monthly_volumes_2022, months_2022 = analyzer.locked_mom(2022)
+monthly_volumes_2023, months_2023 = analyzer.locked_mom(2023)
+
+analyzer.create_heatmap()
+
+# App Mom + YoY Heat
+
+class AppHeatMoM:
+    def __init__(self, file_path, sheet_name, header=2):
+        self.df = pd.read_excel(file_path, sheet_name, header=header)
+        self.df['sHmdaApplicationDate'] = pd.to_datetime(self.df['sHmdaApplicationDate'], format="%Y-%m-%d",
+                                                     errors='coerce').fillna('1900-01-01')
+
+    def app_mom(self, year):
+        monthly_volumes = []
+        for month in range(1, 13):
+            df_filtered = self.df[
+                (self.df['sHmdaApplicationDate'].dt.year == year) & (
+                        self.df['sHmdaApplicationDate'].dt.month == month) & (~self.df['Loan Status']
+                         .isin(['Loan Canceled']))]
+            loan_amount = df_filtered['Total Loan Amount'].sum()
+            monthly_volumes.append(loan_amount)
+        print(monthly_volumes)
+
+        app_mom_pct = []
+        for i in range(1, len(monthly_volumes)):
+            prev_month_volume = monthly_volumes[i - 1]
+            curr_month_volume = monthly_volumes[i]
+
+            if prev_month_volume != 0:
+                pct_change = ((curr_month_volume - prev_month_volume) / prev_month_volume) * 100
+
+            else:
+                pct_change = 0.0
+            app_mom_pct.append(pct_change)
+
+        print(app_mom_pct)
+        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq='M').strftime("%b")
+        return monthly_volumes, months
+
+    def create_heatmap(self):
+
+        # Create a DataFrame for the heatmap
+        data_app = pd.DataFrame({'2020': monthly_volumes_2020, '2021': monthly_volumes_2021, '2022': monthly_volumes_2022,
+                             '2023': monthly_volumes_2023},
+                            index=months_2020)
+        print(data_app)
+
+        # Calculate MoM
+        data_mom = data_app.pct_change().fillna(0)
+        for year in range(2021, 2024):
+            data_mom.loc['Jan', str(year)] = (data_app.loc['Jan', str(year)] - data_app.loc['Dec', str(year - 1)]
+                                                ) / data_app.loc['Dec', str(year - 1)]
+
+        print(data_mom)
+        # Replace zero values with a small value (1) to avoid division by zero
+        data_no_zeros = data_app.replace(0, 1)
+
+        # Calculate YoY 
+        data_yoy = ((data_app - data_app.shift(periods=1, axis=1)) / data_app.shift(periods=1, axis=1) * 100) /100
+        data_yoy = data_yoy.fillna(0)
+        print(data_yoy)
+
+        # Create heatmap
+        plt.figure(figsize=(10, 6))
+        sns.set(font_scale=1)
+        sns.heatmap(data_mom, annot=True, fmt=".1%", cmap='RdBu_r', cbar=False, vmin=-1, vmax=1)
+        plt.title('Month-over-Month % Change in Application Loan Volume')
+        plt.show()
+
+        plt.figure(figsize=(10, 6))
+        sns.set(font_scale=1)
+        sns.heatmap(data_yoy, annot=True, fmt=".1%", cmap='RdBu_r', cbar=False, vmin=-1, vmax=1)
+        plt.title('Year-over-Year % Change in Application Loan Volume')
+        plt.show()
+
+# Call
+analyzer = AppHeatMoM('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+monthly_volumes_2020, months_2020 = analyzer.app_mom(2020)
+monthly_volumes_2021, months_2021 = analyzer.app_mom(2021)
+monthly_volumes_2022, months_2022 = analyzer.app_mom(2022)
+monthly_volumes_2023, months_2023 = analyzer.app_mom(2023)
+
+analyzer.create_heatmap()
