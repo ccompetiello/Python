@@ -1,0 +1,91 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+class Ltv:
+    def __init__(self, file_path, sheet_name, header=2):
+        self.df = pd.read_excel(file_path, sheet_name=sheet_name, header=header)
+        self.df['Base LTV'] = pd.to_numeric(self.df['Base LTV'], errors='coerce')
+        self.df['Closed Date'] = pd.to_datetime(self.df['Closed Date'], format="%Y-%m-%d",
+                                                errors='coerce').fillna('1900-01-01')
+
+    def ltv_buckets(self, year):
+        df_filtered = self.df[
+            (self.df['Closed Date'].dt.year == year) & (self.df['Is Rate Locked'] == 'Yes')
+            & (~self.df['Loan Status'].isin(['Loan Withdrawn', 'Loan Denied', 'Loan Canceled']))]
+
+        # Define the LTV bin edges and labels
+        ltv_bins = [0, 30, 60.01, 70.01, 75.01, 80.01, 85.01, 90.01, 95.01, 100.01]
+        ltv_labels = ['< 30.00%', '30.01 - 60.00%', '60.01 - 70.00%', '70.01 - 75.00%',
+                      '75.01 - 80.00%', '80.01 - 85.00%', '85.01 - 90.00%', '90.01 - 95.00%', '> 95.00%']
+
+        # Apply binning logic to 'Base LTV' column
+        df_filtered['Binned LTV'] = pd.cut(df_filtered['Base LTV'], bins=ltv_bins, labels=ltv_labels, right=False)
+
+        # Calculate average LTV
+        average_ltv = df_filtered['Base LTV'].mean()
+
+        # Count the number of loans in each LTV bin
+        loan_counts = df_filtered['Binned LTV'].value_counts().sort_index()
+        print(loan_counts)
+
+        # Create the horizontal bar chart
+        plt.barh(loan_counts.index, loan_counts.values, edgecolor='black')
+
+        # Set chart title and axis labels
+        plt.title(f'Loan Count by LTV Bins - {year} Avg LTV: {average_ltv:.2f}')
+        plt.xlabel('Number of Loans')
+        plt.ylabel('LTV Bins')
+
+        # Show the chart
+        plt.show()
+
+
+analyzer = Ltv('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+analyzer.ltv_buckets(2023)
+
+
+
+
+# FICO BUCKETS
+
+
+class Fico:
+        def __init__(self, file_path, sheet_name, header=2):
+            self.df = pd.read_excel(file_path, sheet_name=sheet_name, header=header)
+            self.df['Qualifying Score'] = pd.to_numeric(self.df['Qualifying Score'], errors='coerce')
+            self.df['Closed Date'] = pd.to_datetime(self.df['Closed Date'], format="%Y-%m-%d",
+                                                    errors='coerce').fillna('1900-01-01')
+
+        def fico_buckets(self, year):
+            df_filtered = self.df[
+                (self.df['Closed Date'].dt.year == year) & (self.df['Is Rate Locked'] == 'Yes')
+                & (~self.df['Loan Status'].isin(['Loan Withdrawn', 'Loan Denied', 'Loan Canceled']))]
+
+            # Define the LTV bin edges and labels
+            fico_bins = [0, 639, 660, 680, 700, 720, 740, 760, 780, 1000]
+            fico_labels = ['<= 639', '640 - 659', '660 – 679', '680 – 699',
+                          '700 – 719', '720 – 739', '740 – 759', '760 – 779', '>=780']
+
+            # Apply binning logic to FICO
+            df_filtered['Fico Buckets'] = pd.cut(df_filtered['Qualifying Score'], bins=fico_bins, labels=fico_labels, right=False)
+
+            # Calculate average LTV
+            average_fico = df_filtered['Qualifying Score'].mean()
+
+            # Count the number of loans in each LTV bin
+            loan_counts = df_filtered['Fico Buckets'].value_counts().sort_index()
+            print(loan_counts)
+
+            # Create the horizontal bar chart
+            plt.barh(loan_counts.index, loan_counts.values, edgecolor='black')
+
+            # Set chart title and axis labels
+            plt.title(f'Loan Count by FICO Buckets - {year} Avg FICO: {average_fico:.2f}')
+            plt.xlabel('Number of Loans')
+
+            # Show the chart
+            plt.show()
+
+
+analyzer = Fico('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+analyzer.fico_buckets(2023)
