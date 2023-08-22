@@ -1,0 +1,218 @@
+import seaborn as sns
+import pandas as pd
+import matplotlib.pyplot as plt
+import locale
+
+
+class ClosedHeat:
+    def __init__(self, file_path, sheet_name, header=2):
+        self.df = pd.read_excel(file_path, sheet_name, header=header)
+        self.df['Closed Date'] = pd.to_datetime(self.df['Closed Date'], format="%Y-%m-%d",
+                                                errors='coerce').fillna('1900-01-01')
+
+    def monthly_volume_bar(self, year):
+        locale.setlocale(locale.LC_ALL, 'en_US')
+        # monthly_volumes = {}
+        monthly_volumes = []
+        for month in range(1, 13):
+            df_filtered = self.df[
+                (self.df['Closed Date'].dt.year == year) & (
+                        self.df['Closed Date'].dt.month == month) & (self.df['Is Rate Locked'] == 'Yes')
+                & (~self.df['Loan Status'].isin(['Loan Withdrawn', 'Loan Denied', 'Loan Canceled']))]
+            loan_amount = df_filtered['Total Loan Amount'].sum()
+            monthly_volumes.append(locale.currency(loan_amount, grouping=True))
+            # monthly_volumes[month] = {
+            #     'volume': locale.currency(loan_amount, grouping=True),
+            #     'count': df_filtered['Total Loan Amount'].count()
+            # }
+        print(monthly_volumes)
+        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq='M').strftime("%b")
+        return monthly_volumes, months
+
+
+# Call
+analyzer = ClosedHeat('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+monthly_volumes_2020, months_2020 = analyzer.monthly_volume_bar(2020)
+monthly_volumes_2021, months_2021 = analyzer.monthly_volume_bar(2021)
+monthly_volumes_2022, months_2022 = analyzer.monthly_volume_bar(2022)
+monthly_volumes_2023, months_2023 = analyzer.monthly_volume_bar(2023)
+
+# Create a DataFrame for the heatmap
+data = pd.DataFrame({'2020': monthly_volumes_2020, '2021': monthly_volumes_2021, '2022': monthly_volumes_2022, '2023': monthly_volumes_2023},
+                    index=months_2020)
+
+# Convert the currency formatted strings to numeric values
+data = data.applymap(lambda x: locale.atof(x.strip('$').replace(',', '')))
+
+# Set the locale for currency formatting
+locale.setlocale(locale.LC_ALL, 'en_US')
+
+
+# Define a custom formatter function for currency formatting
+def currency_formatter(x, pos):
+    return locale.currency(x, grouping=True)
+
+
+# Create heatmap
+ax = sns.heatmap(data, cmap='YlGnBu', annot=True, fmt=".0f", cbar=True)
+
+# Apply the currency formatter
+for _, spine in ax.spines.items():
+    spine.set_visible(True)
+
+for t in ax.texts:
+    t.set_text(currency_formatter(float(t.get_text()), None))
+
+# Format colorbar legend in dollars
+colorbar = ax.collections[0].colorbar
+colorbar.set_ticks([data.min().min(), data.max().max()])
+colorbar.set_ticklabels([currency_formatter(data.min().min(), None), currency_formatter(data.max().max(), None)])
+
+# Set plot annotation
+plt.xlabel('Year')
+plt.ylabel('Month')
+plt.title('Closed Volume by Month and Year')
+
+# Show the plot
+plt.show()
+
+
+# Locked heat map
+
+class LockedHeat:
+    def __init__(self, file_path, sheet_name, header=2):
+        self.df = pd.read_excel(file_path, sheet_name, header=header)
+        self.df['Rate Locked Date'] = pd.to_datetime(self.df['Rate Locked Date'], format="%Y-%m-%d",
+                                                errors='coerce').fillna('1900-01-01')
+
+    def monthly_volume_bar(self, year):
+        locale.setlocale(locale.LC_ALL, 'en_US')
+        monthly_volumes = []
+        for month in range(1, 13):
+            df_filtered = self.df[
+                (self.df['Rate Locked Date'].dt.year == year) & (
+                        self.df['Rate Locked Date'].dt.month == month)]
+            loan_amount = df_filtered['Total Loan Amount'].sum()
+            monthly_volumes.append(locale.currency(loan_amount, grouping=True))
+        print(monthly_volumes)
+        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq='M').strftime("%b")
+        return monthly_volumes, months
+
+
+# Call
+analyzer = LockedHeat('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+monthly_volumes_2020, months_2020 = analyzer.monthly_volume_bar(2020)
+monthly_volumes_2021, months_2021 = analyzer.monthly_volume_bar(2021)
+monthly_volumes_2022, months_2022 = analyzer.monthly_volume_bar(2022)
+monthly_volumes_2023, months_2023 = analyzer.monthly_volume_bar(2023)
+
+# Create a DataFrame for the heatmap
+data = pd.DataFrame({'2020': monthly_volumes_2020, '2021': monthly_volumes_2021, '2022': monthly_volumes_2022, '2023': monthly_volumes_2023},
+                    index=months_2021)
+
+# Convert to numeric
+data = data.applymap(lambda x: locale.atof(x.strip('$').replace(',', '')))
+
+# Set the locale for currency formatting
+locale.setlocale(locale.LC_ALL, 'en_US')
+
+
+# Format  currency
+def currency_formatter(x, pos):
+    return locale.currency(x, grouping=True)
+
+
+# Create heatmap
+ax = sns.heatmap(data, cmap='YlOrBr', annot=True, fmt=".0f", cbar=True)
+
+# Apply the currency formatter to the annotations
+for _, spine in ax.spines.items():
+    spine.set_visible(True)
+
+for t in ax.texts:
+    t.set_text(currency_formatter(float(t.get_text()), None))
+
+# Format colorbar to dollars
+colorbar = ax.collections[0].colorbar
+colorbar.set_ticks([data.min().min(), data.max().max()])
+colorbar.set_ticklabels([currency_formatter(data.min().min(), None), currency_formatter(data.max().max(), None)])
+
+# Set plot
+plt.xlabel('Year')
+plt.ylabel('Month')
+plt.title('Locked Volume by Month and Year')
+
+plt.show()
+
+
+# heat map for Applications
+
+class AppHeat:
+    def __init__(self, file_path, sheet_name, header=2):
+        self.df = pd.read_excel(file_path, sheet_name, header=header)
+        self.df['sHmdaApplicationDate'] = pd.to_datetime(self.df['sHmdaApplicationDate'], format="%Y-%m-%d",
+                                                errors='coerce').fillna('1900-01-01')
+
+    def monthly_volume_bar(self, year):
+        locale.setlocale(locale.LC_ALL, 'en_US')
+        monthly_volumes = []
+        for month in range(1, 13):
+            df_filtered = self.df[
+                (self.df['sHmdaApplicationDate'].dt.year == year) & (
+                        self.df['sHmdaApplicationDate'].dt.month == month) & (~self.df['Loan Status']
+                        .isin(['Loan Canceled']))]
+            loan_amount = df_filtered['Total Loan Amount'].sum()
+            monthly_volumes.append(locale.currency(loan_amount, grouping=True))
+        print(monthly_volumes)
+        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq='M').strftime("%b")
+        return monthly_volumes, months
+
+
+# Call
+analyzer = AppHeat('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+monthly_volumes_2020, months_2020 = analyzer.monthly_volume_bar(2020)
+monthly_volumes_2021, months_2021 = analyzer.monthly_volume_bar(2021)
+monthly_volumes_2022, months_2022 = analyzer.monthly_volume_bar(2022)
+monthly_volumes_2023, months_2023 = analyzer.monthly_volume_bar(2023)
+
+# Create a DataFrame for the heatmap
+data = pd.DataFrame({'2020': monthly_volumes_2020, '2021': monthly_volumes_2021, '2022': monthly_volumes_2022, '2023': monthly_volumes_2023},
+                    index=months_2021)
+
+# Convert the currency formatted strings to numeric values
+data = data.applymap(lambda x: locale.atof(x.strip('$').replace(',', '')))
+
+# Set the locale for currency formatting
+locale.setlocale(locale.LC_ALL, 'en_US')
+
+
+# format for currency
+def currency_formatter(x, pos):
+    return locale.currency(x, grouping=True)
+
+
+# Create the heatmap using Seaborn
+ax = sns.heatmap(data, cmap='Blues', annot=True, fmt=".0f", cbar=True)
+
+# Apply the currency formatter to the annotations
+for _, spine in ax.spines.items():
+    spine.set_visible(True)
+
+for t in ax.texts:
+    t.set_text(currency_formatter(float(t.get_text()), None))
+
+# Format colorbar
+colorbar = ax.collections[0].colorbar
+colorbar.set_ticks([data.min().min(), data.max().max()])
+colorbar.set_ticklabels([currency_formatter(data.min().min(), None), currency_formatter(data.max().max(), None)])
+
+# Set plot labels and title
+plt.xlabel('Year')
+plt.ylabel('Month')
+plt.title('Application Volume by Month and Year')
+
+
+plt.show()
+
+
+
