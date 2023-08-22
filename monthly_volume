@@ -1,0 +1,133 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import locale
+import matplotlib.ticker as mticker
+
+
+class ClosedLoanVolume:
+    def __init__(self, file_path, sheet_name, header=2):
+        self.df = pd.read_excel(file_path, sheet_name, header=header)
+        self.df['Closed Date'] = pd.to_datetime(self.df['Closed Date'], format="%Y-%m-%d",
+                                 errors='coerce').fillna('1900-01-01')
+
+    def monthly_volume(self, year):
+        locale.setlocale(locale.LC_ALL, 'en_US')
+        monthly_volumes = []
+        for month in range(1, 13):
+            df_filtered = self.df[
+                (self.df['Closed Date'].dt.year == year) & (
+                    self.df['Closed Date'].dt.month == month) & (self.df['Is Rate Locked'] == 'Yes')
+                        & (~self.df['Loan Status'].isin(['Loan Withdrawn', 'Loan Denied', 'Loan Canceled']))]
+            loan_sum = df_filtered['Total Loan Amount'].sum()
+            monthly_volumes.append(loan_sum)
+            print(monthly_volumes)
+
+        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq='M').strftime("%b")
+        plt.bar(months, monthly_volumes)
+        plt.title(f"Closed Loan Volume by Month - {year}")
+        plt.xlabel('Month')
+        plt.ylabel('Volume ($)')
+
+        # Format y-axis tick labels as dollars
+        plt.gca().yaxis.set_major_formatter('${:,.2f}'.format)
+
+        # # Add total loan amount labels above each bar
+        # for i, volume in enumerate(monthly_volumes):
+        #     plt.text(i, volume, '${:,.2f}'.format(volume), ha='center', va='bottom')
+
+        plt.tight_layout()
+
+        plt.show()
+
+
+# Loan volume monthly Call
+analyzer = ClosedLoanVolume('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+analyzer.monthly_volume(2023)
+
+
+# Projected closed estimate based on estimated close date
+class LoanVolume:
+    def __init__(self, file_path, sheet_name, header=2):
+        self.df = pd.read_excel(file_path,sheet_name, header=header)
+        self.df['Estimated Close Date'] = pd.to_datetime(self.df['Estimated Close Date'], format="%Y-%m-%d",
+                                                         errors='coerce').fillna('1900-01-01')
+
+    def monthly_volume(self, year):
+        monthly_volumes = []
+        for month in range(1, 13):
+            df_filtered = self.df[
+                (self.df['Estimated Close Date'].dt.year == year) & (
+                    self.df['Estimated Close Date'].dt.month == month) & (self.df['Is Rate Locked'] == 'Yes')
+                        & (~self.df['Loan Status'].isin(['Loan Withdrawn', 'Loan Denied', 'Loan Canceled']))]
+            loan_sum = df_filtered['Total Loan Amount'].sum()
+            monthly_volumes.append(loan_sum)
+            print(monthly_volumes)
+
+        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq='M').strftime("%b")
+        plt.bar(months, monthly_volumes)
+        plt.title(f"Projected Closed Loan Volume by Month - {year}")
+        plt.xlabel('Month')
+        plt.ylabel('Volume ($)')
+
+        # Format y-axis tick labels as dollars
+        plt.gca().yaxis.set_major_formatter('${:,.2f}'.format)
+
+        # # Add total loan amount labels above each bar
+        # for i, volume in enumerate(monthly_volumes):
+        #     plt.text(i, volume, '${:,.2f}'.format(volume), ha='center', va='bottom')
+
+        plt.tight_layout()
+
+        plt.show()
+
+
+# Loan volume monthly Call
+analyzer = LoanVolume('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+analyzer.monthly_volume(2023)
+
+
+class LoanVolumeCharts:
+    def __init__(self, file_path, sheet_name, header=2):
+        self.df = pd.read_excel(file_path, sheet_name, header=header)
+        self.df['Estimated Close Date'] = pd.to_datetime(self.df['Estimated Close Date'], format="%Y-%m-%d",
+                                                         errors='coerce').fillna('1900-01-01')
+
+    def monthly_volume_bar(self, year, color):
+        monthly_volumes = []
+        for month in range(1, 13):
+            df_filtered = self.df[
+                (self.df['Estimated Close Date'].dt.year == year) & (
+                        self.df['Estimated Close Date'].dt.month == month) & (self.df['Is Rate Locked'] == 'Yes')
+                & (~self.df['Loan Status'].isin(['Loan Withdrawn', 'Loan Denied', 'Loan Canceled']))]
+            loan_amount = df_filtered['Total Loan Amount'].sum()
+            monthly_volumes.append(loan_amount)
+            print(monthly_volumes)
+
+        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq='M').strftime("%b")
+        return monthly_volumes, months, color
+
+
+# Set the locale for formatting
+locale.setlocale(locale.LC_ALL, '')
+
+# Call
+analyzer = LoanVolumeCharts('C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx', 'RawData')
+monthly_volumes_2021, months_2021, color_2021 = analyzer.monthly_volume_bar(2021, 'green')
+monthly_volumes_2022, months_2022, color_2022 = analyzer.monthly_volume_bar(2022, 'blue')
+monthly_volumes_2023, months_2023, color_2023 = analyzer.monthly_volume_bar(2023, 'orange')
+
+# Create the plot
+plt.bar(months_2021, monthly_volumes_2021, label='2021', color=color_2021)
+plt.bar(months_2022, monthly_volumes_2022, label='2022', color=color_2022)
+plt.bar(months_2023, monthly_volumes_2023, label='2023', color=color_2023)
+
+# Format y-axis labels as dollars
+plt.gca().yaxis.set_major_formatter(mticker.StrMethodFormatter('{x:,.0f}'))
+
+plt.title("Closed Loan Volume Comparison - 2021 - 2023")
+plt.xlabel('Month')
+plt.ylabel('Volume ($)')
+plt.legend()
+plt.tight_layout()
+plt.show()
+
