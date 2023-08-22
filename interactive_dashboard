@@ -1,0 +1,140 @@
+import pandas as pd
+import plotly.express as px
+import dash
+from dash import Dash, html, dcc, callback
+from dash.dependencies import Input, Output
+import locale
+
+df = pd.read_excel("C:/Users/18458/Desktop/Accounting/Python/RawData.xlsx", sheet_name="RawData", header=2)
+
+# Convert 'Closed Date' column to datetime format
+df['Closed Date'] = pd.to_datetime(df['Closed Date'], format="%Y-%m-%d", errors='coerce').fillna('1900-01-01')
+
+# Convert HMDA to date time
+df['sHmdaApplicationDate'] = pd.to_datetime(df['sHmdaApplicationDate'], format="%Y-%m-%d", errors='coerce').fillna('1900-01-01')
+
+# Convert Rate lock date
+df['Rate Locked Date'] = pd.to_datetime(df['Rate Locked Date'], format="%Y-%m-%d", errors='coerce').fillna('1900-01-01')
+
+
+# Dash app setup
+app = Dash(__name__, title="Dashboard Report")
+
+# Function for monthly closed volume
+def monthly_volume(year):
+    locale.setlocale(locale.LC_ALL, 'en_US')
+    monthly_data = []
+    monthly_count = []
+    for month in range(1, 13):
+        df_filtered = df[
+            (df['Closed Date'].dt.year == year) & (
+                df['Closed Date'].dt.month == month) & (df['Is Rate Locked'] == 'Yes')
+            & (~df['Loan Status'].isin(['Loan Withdrawn', 'Loan Denied', 'Loan Canceled']))]
+        loan_sum = df_filtered['Total Loan Amount'].sum()
+        loan_count = df_filtered['Total Loan Amount'].count()
+        monthly_data.append(loan_sum)
+        monthly_count.append(loan_count)
+    return monthly_data, monthly_count
+
+# Function for monthly application volume
+def app_monthly_volume(year):
+    locale.setlocale(locale.LC_ALL, 'en_US')
+    app_monthly_data = []
+    app_monthly_count = []
+    for month in range(1, 13):
+        df_filtered = df[
+            (df['sHmdaApplicationDate'].dt.year == year) & (
+                df['sHmdaApplicationDate'].dt.month == month) & (~df['Loan Status']
+                         .isin(['Loan Canceled']))]
+        loan_sum = df_filtered['Total Loan Amount'].sum()
+        loan_count = df_filtered['Total Loan Amount'].count()
+        app_monthly_data.append(loan_sum)
+        app_monthly_count.append(loan_count)
+    return app_monthly_data, app_monthly_count
+
+# function for locked data
+
+def lock_monthly_volume(year):
+    lock_monthly_data = []
+    lock_monthly_count = []
+    for month in range(1, 13):
+        df_filtered = df[
+            (df['Rate Locked Date'].dt.year == year) & (
+                df['Rate Locked Date'].dt.month == month)]
+        loan_sum = df_filtered['Total Loan Amount'].sum()
+        lock_monthly_data.append(loan_sum)
+        count = len(df_filtered)
+        lock_monthly_count.append(count)
+        print(lock_monthly_data)
+        print(lock_monthly_count)
+    return lock_monthly_data, lock_monthly_count
+
+
+# Define the layout of the app
+app.layout = html.Div(
+    children=[
+        html.H1("Dashboard Report", style={"text-align": "center"}),
+        html.Br(),
+        html.Div(
+            children=[
+                dcc.Dropdown(
+                    id='data-type-dropdown',
+                    options=[
+                        {'label': 'Closed', 'value': 'closed'},
+                        {'label': 'Application', 'value': 'application'},
+                        {'label': 'Locked', 'value': 'locked'}
+                    ],
+                    value='closed'
+                ),
+                dcc.Dropdown(
+                    id='year-dropdown',
+                    options=[
+                        {'label': '2021', 'value': 2021},
+                        {'label': '2022', 'value': 2022},
+                        {'label': '2023', 'value': 2023}
+                    ],
+                    value=2021
+                ),
+                html.Div(
+                    dcc.Graph(id='monthly-volume-chart'),
+                    style={'margin': '50px'}
+                )
+            ]
+        )
+    ]
+)
+
+# Callback
+@app.callback(
+    Output('monthly-volume-chart', 'figure'),
+    Input('data-type-dropdown', 'value'),
+    Input('year-dropdown', 'value')
+)
+
+
+def update_monthly_volume_chart(data_type, year):
+    if data_type == 'closed':
+        data, count = monthly_volume(year)
+    elif data_type == 'application':
+        data, count = app_monthly_volume(year)
+    else:
+        data, count = lock_monthly_volume(year)
+
+        # Format the data values as dollars
+    data_formatted = [locale.currency(value, grouping=True, symbol=False) for value in data]
+
+    fig = px.bar(
+        x=range(1, 13),
+        y=data,
+        text=[f'${v}<br>({c})' for v, c in zip(data_formatted, count)],  # Display volume and count as text
+        labels={'x': 'Month', 'y': 'Total Loan Amount'},
+        title='Monthly Volume'
+    )
+    fig.update_traces(texttemplate='%{text}', textposition='outside')
+    fig.update_layout(uniformtext_minsize=4, uniformtext_mode='hide')
+
+    return fig
+
+
+if __name__ == '__main__':
+    app.run_server(debug=True)
