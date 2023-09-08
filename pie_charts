@@ -1,0 +1,77 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df = pd.read_csv("C:\\Users\\18458\\Desktop\\Dashboard Reports\\Report.csv", header=1)
+df = df.drop(0)
+
+
+def loans_by_state_month(file_path, month, year):
+    df['Estimated Close Date'] = pd.to_datetime(df['Estimated Close Date'])
+
+    # Filter by month and year
+    df_filtered = df[
+        (df['Estimated Close Date'].dt.year == 2023) & (
+                df['Estimated Close Date'].dt.month == month) & (df['Is Rate Locked'] == 'Yes')
+        & (~df['Loan Status'].isin(['Loan Withdrawn', 'Loan Denied', 'Loan Canceled']))]
+
+    # Group and count loans closed by state
+    df_states = df_filtered.groupby('Subj Prop State')[['Loan Number']].count().dropna()
+    print(df_states)
+
+    colors = ['#008fd5', '#fc4f30', '#e5ae37', '#6d904f', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
+              '#17becf', '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5']
+
+    # Create a pie chart
+    plt.pie(df_states['Loan Number'], labels=df_states.index, colors=colors, shadow=True,
+            wedgeprops={'edgecolor': 'black'}, autopct='%1.1f%%', pctdistance=.87)
+
+    plt.title(f"Projected Closed Loans by State in {month}-{year}")
+    plt.tight_layout()
+
+    # Show the chart
+    plt.show()
+
+
+# csv file path & call
+csv_file_path = 'C:/Users/18458/Desktop/Accounting/Python/Report.csv'
+loans_by_state_month(csv_file_path, 8, 2023)
+
+
+# States by year
+
+def pie_year(file_path, year):
+
+    # Convert 'Closed' column to datetime format
+    df['Closed Date'] = pd.to_datetime(df['Closed Date'])
+
+    # Filter by status
+    df_filtered = df[
+        (df['Closed Date'].dt.year == year) & (df['Is Rate Locked'] == 'Yes')
+         & (~df['Loan Status'].isin(['Loan Withdrawn', 'Loan Denied', 'Loan Canceled']))]
+
+    # Group and count loans closed by state
+    df_states = df_filtered.groupby('Subj Prop State')[['Loan Number']].count().dropna()
+    print(df_states)
+
+    colors = ['#008fd5', '#fc4f30', '#e5ae37', '#6d904f', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf', '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5']
+
+    # Create a pie chart
+    wedges, texts, autotexts = plt.pie(df_states['Loan Number'], labels=df_states.index, colors=colors,
+                                       shadow=True, wedgeprops={'edgecolor': 'black'},
+                                       autopct='%1.1f%%', pctdistance=.87)
+
+    # Adjust the label positions outside the chart
+    for autotext in autotexts:
+        autotext.set_color('white')
+        autotext.set_fontsize(8)
+
+    plt.setp(autotexts, size=8, weight='bold')
+
+    plt.title(f"Closed Loans by State YTD- {year}")
+    plt.tight_layout()
+    # Show the chart
+    plt.show()
+
+
+pie_year(csv_file_path, 2023)
+
