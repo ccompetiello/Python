@@ -7,36 +7,33 @@ class Amerihome_vol:
         self.df['Total Loan Amount'] = self.df['Total Loan Amount'].str.replace('[\$,]', '', regex=True)
         self.df['Total Loan Amount'] = pd.to_numeric(self.df['Total Loan Amount'], errors='coerce')
         self.df['Term'] = pd.to_numeric(self.df['Term'], errors='coerce')
+        self.df['Loan Type'] = self.df['Loan Type'].astype(str)
 
-    def con_vol(self, year):
+    def ah_volume(self, year, loan_type, lock_comments=''):
         monthly_vol = []
-        total_vol = []
+        total_vol = 0  
         for month in range(1, 9):
             df_filtered = self.df[(self.df['Closed Date'].dt.year == year) & (self.df['Closed Date'].dt.month == month)
-                & (~self.df['Loan Status'].isin(['Loan Withdrawn', 'Loan Canceled', 'Loan Denied'])) & (self.df['Lock Comments'] != 'X') 
-                & (~self.df['Term'].isin([6,9])) & (~self.df['Loan Type'].isin(['VA', 'FHA']))]
-    
+                & (~self.df['Loan Status'].isin(['Loan Withdrawn', 'Loan Canceled', 'Loan Denied']))
+                & ((self.df['Lock Comments'] == lock_comments) | (self.df['Lock Comments'].isna())) 
+                & (~self.df['Term'].isin([6,9])) & (self.df['Loan Type'] == loan_type)]
+        
             loan_sum = df_filtered['Total Loan Amount'].sum()
             monthly_vol.append(loan_sum)
-            total_vol = sum(monthly_vol)
+            total_vol += loan_sum  
         return monthly_vol, total_vol
 
-    def non_con_vol(self, year):
-        monthly_vol = []
-        total_vol = []
-        for month in range(1, 9):
-            df_filtered = self.df[(self.df['Closed Date'].dt.year == year) & (self.df['Closed Date'].dt.month == month)
-                & (~self.df['Loan Status'].isin(['Loan Withdrawn', 'Loan Canceled', 'Loan Denied'])) & (self.df['Lock Comments'] == 'X') 
-                & (~self.df['Term'].isin([6,9])) & (~self.df['Loan Type'].isin(['VA', 'FHA']))]
-    
-            loan_sum = df_filtered['Total Loan Amount'].sum()
-            monthly_vol.append(loan_sum)
-            total_vol = sum(monthly_vol)
-        return monthly_vol, total_vol
 
 file_path = 'C:/Users/18458/Desktop/Accounting/Python/Report.csv'   
 instance = Amerihome_vol(file_path, header=1)
-call = instance.con_vol(2023)
-non_con_call = instance.non_con_vol(2023)
-print(call)
-print(non_con_call)
+
+call = instance.ah_volume(2023, loan_type='Conventional')
+non_con_call = instance.ah_volume(2023, loan_type='Conventional', lock_comments='X')
+fha_call = instance.ah_volume(2023, loan_type='FHA', lock_comments='')
+va_call = instance.ah_volume(2023, loan_type='VA', lock_comments='')
+
+
+print('Conforming loan volume: ', call)
+print('Jumbo loan volume: ', non_con_call)
+print('FHA loan volume: ', fha_call)
+print('VA loan volume: ', va_call)
