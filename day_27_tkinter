@@ -1,0 +1,40 @@
+import tkinter
+
+window = tkinter.Tk()
+window.minsize(width=300, height=100)
+window.title("Mile to Km Converter")
+window.config(padx=50)
+
+
+# button function for calculate
+def button_clicked():
+    miles = int(my_input.get())
+    answer = miles * 1.609344
+    my_label.config(text=answer)
+
+
+# is equal to
+label = tkinter.Label(text="is equal to", font=16)
+label.grid(row=1, column=0)
+
+# Miles
+label = tkinter.Label(text="Miles", font=16)
+label.grid(row=0, column=2)
+
+# Km
+label = tkinter.Label(text="Km", font=16)
+label.grid(row=1, column=2)
+
+# Entry
+my_input = tkinter.Entry(width=10)
+my_input.grid(row=0, column=1)
+
+# Calculate button
+my_button = tkinter.Button(text="Calculate", command=button_clicked)
+my_button.grid(row=2, column=1)
+
+# answer
+my_label = tkinter.Label(text="", font=16)
+my_label.grid(row=1, column=1)
+
+window.mainloop()
